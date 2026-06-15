@@ -1,14 +1,14 @@
-# Coding Assistant Eval Pipeline — Model Upgrade Regression Detection
+# Coding Assistant Eval Pipeline - Model Upgrade Regression Detection
 
 **Domain:** Any AI product undergoing model upgrades  
-**Interview question:** *"You're upgrading your coding assistant's base model. Design an eval system that catches regressions and gives your team confidence to ship — using 3 months of production logs."*  
+**Interview question:** *"You're upgrading your coding assistant's base model. Design an eval system that catches regressions and gives your team confidence to ship - using 3 months of production logs."*  
 **Industry reference:** GitHub Copilot, Cursor, SWE-bench, HumanEval
 
 ---
 
 ## The Core Problem
 
-Model upgrades are not guaranteed improvements. A new model might be better at code generation but worse at explanations. Without a systematic eval, teams ship blind — relying on "it feels better" from a few manual tests.
+Model upgrades are not guaranteed improvements. A new model might be better at code generation but worse at explanations. Without a systematic eval, teams ship blind - relying on "it feels better" from a few manual tests.
 
 The eval system needs to:
 1. Compare old vs new model on real-world inputs (not synthetic benchmarks alone)
@@ -23,9 +23,9 @@ The eval system needs to:
 ```
 3 months of production logs (golden dataset)
   │  prompts + old model outputs + implicit feedback signals
-  │  (copy rate, re-ask rate, edit distance — already recorded)
+  │  (copy rate, re-ask rate, edit distance - already recorded)
   ▼
-[Replay Pipeline — Shadow Evaluation]
+[Replay Pipeline - Shadow Evaluation]
   │  same prompts → new model → new outputs
   │  old model outputs already exist in logs, no need to re-run
   ▼
@@ -60,13 +60,13 @@ The eval system needs to:
 [Implicit Feedback Correlation]
   │  for prompts where new model's output diverges from old:
   │  was the OLD output's implicit feedback positive or negative?
-  │  (high copy rate = old output was good — new model should match
-  │   or exceed; low copy rate = old output was bad — new model
+  │  (high copy rate = old output was good - new model should match
+  │   or exceed; low copy rate = old output was bad - new model
   │   improving here is a win even if "different")
   ▼
 [Scorecard]
   │  aggregate scores per task type, per model version
-  │  stored in eval registry — versioned over time
+  │  stored in eval registry - versioned over time
   ▼
 Ship / Hold decision
 ```
@@ -91,27 +91,27 @@ LogEntry {
 }
 ```
 
-For the new model, only the new output needs to be generated — this halves your compute cost compared to re-running both models from scratch.
+For the new model, only the new output needs to be generated - this halves your compute cost compared to re-running both models from scratch.
 
 ---
 
-## Cascaded Evaluation — Cost Control
+## Cascaded Evaluation - Cost Control
 
 Running an LLM judge on every single comparison is expensive at scale (3 months of logs could be hundreds of thousands of entries).
 
-**Stage 1 — Cheap filter:** cosine similarity between old and new output embeddings.
+**Stage 1 - Cheap filter:** cosine similarity between old and new output embeddings.
 - Similarity > 0.95 → outputs are essentially the same, mark "no change," skip judge
 - Similarity < 0.95 → genuinely different, proceed to Stage 2
 
 This typically eliminates 60-70% of comparisons before any expensive LLM call.
 
-**Stage 2 — LLM judge:** only for divergent outputs, with task-specific rubrics (below).
+**Stage 2 - LLM judge:** only for divergent outputs, with task-specific rubrics (below).
 
 ---
 
 ## Execution-Based Evaluation (Code Generation)
 
-The gold standard for code — don't ask "does this look right," run it.
+The gold standard for code - don't ask "does this look right," run it.
 
 ```
 For each prompt in golden set where task_type = "code_generation":
@@ -123,13 +123,13 @@ For each prompt in golden set where task_type = "code_generation":
   5. Static analysis: cyclomatic complexity, lint warnings
 ```
 
-This is the same principle as **HumanEval** and **MBPP** — execution is ground truth, no judge bias possible.
+This is the same principle as **HumanEval** and **MBPP** - execution is ground truth, no judge bias possible.
 
 ---
 
 ## SWE-bench Style Bug Fixing Eval
 
-For bug fixing specifically, synthetic test cases aren't enough — real bugs in real codebases are the standard.
+For bug fixing specifically, synthetic test cases aren't enough - real bugs in real codebases are the standard.
 
 ```
 1. Clone real open-source repos (post-training-cutoff repos preferred,
@@ -138,14 +138,14 @@ For bug fixing specifically, synthetic test cases aren't enough — real bugs in
 3. Revert the fix, present the buggy state + bug description to model
 4. Model generates a patch
 5. Apply patch, run the repo's actual test suite
-6. Pass/fail is binary and objective — no judge needed
+6. Pass/fail is binary and objective - no judge needed
 ```
 
-This is literally how **SWE-bench** works — and it's the standard for evaluating coding agents (Claude, GPT-4, Gemini are all ranked on it).
+This is literally how **SWE-bench** works - and it's the standard for evaluating coding agents (Claude, GPT-4, Gemini are all ranked on it).
 
 ---
 
-## Code Explanation Eval — Preventing "Cheating"
+## Code Explanation Eval - Preventing "Cheating"
 
 LLMs can cheat explanation tasks by reading README/docs instead of actually understanding code.
 
@@ -163,7 +163,7 @@ This isolates genuine code comprehension from documentation regurgitation.
 
 ---
 
-## LLM-as-Judge — Bias Mitigation
+## LLM-as-Judge - Bias Mitigation
 
 | Bias | Mitigation |
 |---|---|
@@ -193,7 +193,7 @@ These signals are attached to the *old* model's outputs in your logs. Use them t
 
 ---
 
-## Eval Registry — Making This Reusable
+## Eval Registry - Making This Reusable
 
 The system must work for the *next* upgrade without rebuilding.
 
