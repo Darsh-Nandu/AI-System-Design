@@ -1,0 +1,107 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: refund-postgres
+    environment:
+      POSTGRES_DB: refund_agent
+      POSTGRES_USER: refund
+      POSTGRES_PASSWORD: refund_secret
+    ports:
+      - "5433:5432"
+    volumes:
+      - refund_postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U refund -d refund_agent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: refund-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6380:6379"
+    volumes:
+      - refund_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redpanda:
+    image: redpandadata/redpanda:v24.3.1
+    container_name: refund-redpanda
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=warn
+    ports:
+      - "19092:19092"
+      - "9645:9644"
+    volumes:
+      - refund_redpanda_data:/var/lib/redpanda/data
+
+  redpanda-console:
+    image: redpandadata/console:v2.7.2
+    container_name: refund-console
+    depends_on: [redpanda]
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    container_name: refund-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - refund_prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: refund-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - refund_grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: refund-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+    ports:
+      - "8000:8000"
+    profiles: ["full"]
+    restart: unless-stopped
+
+volumes:
+  refund_postgres_data:
+  refund_redis_data:
+  refund_redpanda_data:
+  refund_prometheus_data:
+  refund_grafana_data:

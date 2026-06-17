@@ -1,0 +1,81 @@
+[project]
+name = "fintech-refund-agent"
+version = "0.1.0"
+description = "Production fintech refund agent: LangGraph + Claude + idempotent Stripe-style execution"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # Agent orchestration
+    "langgraph>=0.2.60",
+    "langchain-anthropic>=0.3.0",
+    "anthropic>=0.42.0",
+    # API
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    # Database
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    # Cache + checkpointing
+    "redis[asyncio]>=5.2.0",
+    "langgraph-checkpoint-redis>=0.0.6",
+    # Audit log (Kafka)
+    "aiokafka>=0.11.0",
+    # Config + models
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "python-dotenv>=1.0.0",
+    # Observability
+    "structlog>=24.4.0",
+    "prometheus-client>=0.21.0",
+    # Utilities
+    "tenacity>=9.0.0",
+    "httpx>=0.28.0",
+    "orjson>=3.10.0",
+    "python-jose[cryptography]>=3.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.28.0",
+    "respx>=0.21.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "types-redis>=4.6.0",
+]
+
+[project.scripts]
+refund-api = "refund_agent.api.main:run"
+refund-seed = "refund_agent.storage.postgres:seed"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/refund_agent"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=src --cov-report=term-missing --cov-fail-under=75"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/migrations/*", "*/seed*"]
