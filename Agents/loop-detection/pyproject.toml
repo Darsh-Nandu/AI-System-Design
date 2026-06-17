@@ -1,0 +1,73 @@
+[project]
+name = "loop-detector"
+version = "0.1.0"
+description = "Drop-in loop detection and recovery middleware for LangGraph agents"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # Agent + LLM
+    "langgraph>=0.2.60",
+    "anthropic>=0.42.0",
+    "langchain-anthropic>=0.3.0",
+    # Semantic similarity
+    "sentence-transformers>=3.3.0",
+    # API
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    # Storage
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "redis[asyncio]>=5.2.0",
+    "langgraph-checkpoint-redis>=0.0.6",
+    # Config + models
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "python-dotenv>=1.0.0",
+    # Observability
+    "structlog>=24.4.0",
+    "prometheus-client>=0.21.0",
+    # Utilities
+    "orjson>=3.10.0",
+    "numpy>=2.0.0",
+]
+
+[project.optional-dependencies]
+api = []
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.28.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
+[project.scripts]
+loop-detector-api = "loop_detector.api.main:run"
+loop-detector-example = "example.run:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/loop_detector"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=src --cov-report=term-missing --cov-fail-under=75"

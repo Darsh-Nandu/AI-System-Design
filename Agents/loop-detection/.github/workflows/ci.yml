@@ -1,0 +1,100 @@
+name: loop-detection CI
+
+on:
+  push:
+    paths:
+      - "Agents/loop-detection/**"
+  pull_request:
+    paths:
+      - "Agents/loop-detection/**"
+
+defaults:
+  run:
+    working-directory: Agents/loop-detection
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev,api]"
+      - name: Ruff lint
+        run: ruff check src/ tests/
+      - name: Mypy type check
+        run: mypy src/
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev,api]"
+      - name: Run unit tests
+        run: SKIP_INTEGRATION=1 pytest tests/unit -v --tb=short
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: loop
+          POSTGRES_PASSWORD: loop
+          POSTGRES_DB: loop_detection
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://loop:loop@localhost:5432/loop_detection
+      REDIS_URL: redis://localhost:6379/0
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev,api]"
+      - name: Run integration tests
+        run: pytest tests/integration -v --tb=short
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v5
+        with:
+          context: Agents/loop-detection
+          target: api
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
