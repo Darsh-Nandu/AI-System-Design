@@ -106,28 +106,28 @@ make seed
 
 ## System Design Deep-Dive
 
-### Problem 1 — Deduplication
+### Problem 1 - Deduplication
 
 Two-stage semantic dedup:
 
-**Stage 1 — Entity fingerprint (cheap, ~0.1ms):**
+**Stage 1 - Entity fingerprint (cheap, ~0.1ms):**
 Extract named entities → `hash(sorted(entities))`. If no entity overlap, skip similarity check. Eliminates ~80% of candidates.
 
-**Stage 2 — Cosine similarity (fast, ~1ms):**
+**Stage 2 - Cosine similarity (fast, ~1ms):**
 
 | Similarity | Action |
 |---|---|
 | > 0.97 | Exact duplicate → reject |
-| 0.85–0.97 | Same story, different angle → cluster under `story_id` |
+| 0.85-0.97 | Same story, different angle → cluster under `story_id` |
 | < 0.85 | Different story → accept |
 
-### Problem 2 — Staleness
+### Problem 2 - Staleness
 
-Event-driven: every accepted article triggers a search for related articles that may be superseded. Mark stale within seconds — not hours.
+Event-driven: every accepted article triggers a search for related articles that may be superseded. Mark stale within seconds - not hours.
 
 Hot partition for volatile topics (elections, markets): dedicated checker every 5 minutes.
 
-### Problem 3 — Ingestion Lag
+### Problem 3 - Ingestion Lag
 
 Kafka streaming: article is searchable < 10 seconds after publication. No batch windows.
 
